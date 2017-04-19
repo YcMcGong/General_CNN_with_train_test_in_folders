@@ -2,29 +2,36 @@ import tensorflow as tf
 import numpy as np
 import pandas as pd
 from Import_Images import Import_Data
-# from tensorflow.examples.tutorials.mnist import input_data
 
-# mnist = input_data.read_data_sets("/tmp/data/", one_hot = True)
-# path = './Training_Data/'
-path = './color1/'
-# img_train, img_test, label_train, label_test = IMG(path)
-# print(label_test)
-data = Import_Data(path)
+"""
+This is the main program to train the CNN
 
-n_class = 4
-batch_size = 8
-# pixel = 784
+"""
+#Define values
+path = './Training_Data/'
+n_class = 8
+sample_size = 600
+batch_size = 90*4
+validate_batch_size = int(sample_size*0.2)
+number_of_epoch = 30
+subject_list = ['Apple','Car','Cow','Cup','Dog','Horse','Pear','Tomato']
 
-# x = tf.placeholder('float', [None, pixel])
+#Import Data
+data = Import_Data(path,sample_size,subject_list)
+
+#Set up tensorflow placeholder variable
 x = tf.placeholder('float')
-y = tf.placeholder('int32')
+y = tf.placeholder('int64')
 
+#Define Convolution function
 def conv_2d(x, W):
     return tf.nn.conv2d(x,W, strides = [1,1,1,1], padding = "SAME")
 
+#Define Pooling function
 def maxpool2d(x):
     return tf.nn.max_pool(x, ksize = [1,4,4,1], strides = [1,4,4,1], padding = "SAME")
 
+#Define Model
 def model(x):
     
     weights = {"W_conv1": tf.Variable(tf.random_normal([5,5,3,32])), #CHANGES HERE
@@ -55,29 +62,48 @@ def model(x):
 
     return output
 
+#Define a validation function
+def validate(validate_batch_size, prediction):
+    
+    validate_accuracy = 0
+    validate_batch_count = int(data.num_validate_examples/validate_batch_size)
+    
+    for _ in range(validate_batch_count):
+        epoch_x,epoch_y = data.next_validate_batch(validate_batch_size)
+        correct = tf.equal(tf.arg_max(prediction,1), y)
+        accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
+        validate_accuracy = validate_accuracy + accuracy.eval(feed_dict = {x: epoch_x, y:epoch_y})
+    return (validate_accuracy/validate_batch_count)
+
+#Run CNN
 def train_CNN(x):
 
     prediction = model(x)
     cost = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=y))
     optimizer = tf.train.AdamOptimizer().minimize(cost)
 
-    number_of_epoch = 30
+    #Tensorflow saver object declared
     saver = tf.train.Saver()
     with tf.Session() as sess: 
         sess.run(tf.global_variables_initializer())
-
+        # saver.restore(sess, "./Checkpoints/model.ckpt") # Recover the trained network
         for epoch in range(number_of_epoch):
             loss = 0
             for _ in range(int(data.num_examples/batch_size)):
                 epoch_x,epoch_y = data.next_train_batch(batch_size)
                 _,c = sess.run([optimizer, cost], feed_dict = {x: epoch_x, y: epoch_y})
                 loss += c
-            print(loss)
-        
-        saver.save(sess, './Checkpoints/model.ckpt')
+            saver.save(sess, './Checkpoints/model.ckpt') #Save the current network in checkpoint
+            print("Loss for epoch ", epoch, " is: ",loss)
+
+            #Print out the validation result every 5 epoch
+            if (epoch%5 ==0): 
+                print("Validate Accuracy is ", validate(validate_batch_size, prediction))
 
         # correct = tf.equal(tf.arg_max(prediction,1), tf.arg_max(y,1))
         # accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
         # print("Training accuracy is:  ", accuracy.eval({x: data.img_test, y:data.label_test}))
 
-train_CNN(x)
+# call main
+if __name__ == '__main__':
+    train_CNN(x)

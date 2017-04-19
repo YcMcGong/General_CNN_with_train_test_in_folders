@@ -5,19 +5,19 @@ from Import_Images import Import_Data
 # from tensorflow.examples.tutorials.mnist import input_data
 
 # mnist = input_data.read_data_sets("/tmp/data/", one_hot = True)
-# path = './Training_Data/'
-path = './color1/'
+path = './Training_Data/'
+# path = './color1/'
 # img_train, img_test, label_train, label_test = IMG(path)
 # print(label_test)
 data = Import_Data(path)
 
-n_class = 4
-batch_size = 8
+n_class = 8
+batch_size = 100
 # pixel = 784
 
 # x = tf.placeholder('float', [None, pixel])
 x = tf.placeholder('float')
-y = tf.placeholder('int32')
+y = tf.placeholder('int64')
 
 def conv_2d(x, W):
     return tf.nn.conv2d(x,W, strides = [1,1,1,1], padding = "SAME")
@@ -68,16 +68,15 @@ def train_CNN(x):
         sess.run(tf.global_variables_initializer())
         saver.restore(sess, "./Checkpoints/model.ckpt")
 
-        for epoch in range(number_of_epoch):
-            loss = 0
-            for _ in range(int(data.num_examples/batch_size)):
-                epoch_x,epoch_y = data.next_train_batch(batch_size)
-                _,c = sess.run([optimizer, cost], feed_dict = {x: epoch_x, y: epoch_y})
-                loss += c
-            print(loss)
+        validate_accuracy = 0
+        validate_batch_count = int(data.num_validate_examples/batch_size)
+        for _ in range(validate_batch_count):
+            
+            epoch_x,epoch_y = data.next_validate_batch(batch_size)
+            correct = tf.equal(tf.arg_max(prediction,1), y)
+            accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
+            validate_accuracy = validate_accuracy + accuracy.eval(feed_dict = {x: epoch_x, y:epoch_y})
 
-        # correct = tf.equal(tf.arg_max(prediction,1), tf.arg_max(y,1))
-        # accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
-        # print("Training accuracy is:  ", accuracy.eval({x: data.img_test, y:data.label_test}))
+        print("Training accuracy is:  ", validate_accuracy/validate_batch_count)
 
 train_CNN(x)
