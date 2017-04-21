@@ -13,7 +13,7 @@ n_class = 8
 sample_size = 600
 batch_size = 90*4
 validate_batch_size = int(sample_size*0.2)
-number_of_epoch = 30
+number_of_epoch = 90
 subject_list = ['Apple','Car','Cow','Cup','Dog','Horse','Pear','Tomato']
 
 #Import Data
@@ -36,13 +36,13 @@ def model(x):
     
     weights = {"W_conv1": tf.Variable(tf.random_normal([5,5,3,32])), #CHANGES HERE
                 "W_conv2": tf.Variable(tf.random_normal([5,5,32,64])),
-                "W_full": tf.Variable(tf.random_normal([14*14*64,1000])),
-                "W_out": tf.Variable(tf.random_normal([1000, n_class]))
+                "W_full": tf.Variable(tf.random_normal([14*14*64,100])),
+                "W_out": tf.Variable(tf.random_normal([100, n_class]))
     }
 
     bias = {"bias_conv1": tf.Variable(tf.random_normal([32])),
             "bias_conv2": tf.Variable(tf.random_normal([64])),
-            "bias_full": tf.Variable(tf.random_normal([1000])),
+            "bias_full": tf.Variable(tf.random_normal([100])),
             "bias_out": tf.Variable(tf.random_normal([n_class])),
     }
 
@@ -86,7 +86,7 @@ def train_CNN(x):
     saver = tf.train.Saver()
     with tf.Session() as sess: 
         sess.run(tf.global_variables_initializer())
-        # saver.restore(sess, "./Checkpoints/model.ckpt") # Recover the trained network
+        saver.restore(sess, "./Checkpoints/model.ckpt") # Recover the trained network
         for epoch in range(number_of_epoch):
             loss = 0
             for _ in range(int(data.num_examples/batch_size)):
@@ -94,6 +94,7 @@ def train_CNN(x):
                 _,c = sess.run([optimizer, cost], feed_dict = {x: epoch_x, y: epoch_y})
                 loss += c
             saver.save(sess, './Checkpoints/model.ckpt') #Save the current network in checkpoint
+            data.Shuffule()
             print("Loss for epoch ", epoch, " is: ",loss)
 
             #Print out the validation result every 5 epoch
