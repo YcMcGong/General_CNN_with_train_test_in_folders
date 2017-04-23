@@ -59,7 +59,7 @@ class Import_Data:
             subject_number = subject_number + 1
             images.extend(imgs)
             labels.extend(labs)
-        img_train, img_test, label_train, label_test = train_test_split(images, labels, test_size=self.validate_size, random_state = 42)
+        img_train, img_test, label_train, label_test = train_test_split(images, labels, test_size=self.validate_size, random_state = 22) #42
         return img_train, img_test, label_train, label_test, images, labels
 
     def next_train_batch(self, batch_size):

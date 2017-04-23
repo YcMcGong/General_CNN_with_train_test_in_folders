@@ -11,10 +11,11 @@ This is the main program to train the CNN
 path = './Training_Data/'
 n_class = 8
 sample_size = 600
-batch_size = 90*4
+batch_size = 432#90*4
 validate_batch_size = int(sample_size*0.2)
-number_of_epoch = 90
+number_of_epoch = 10
 subject_list = ['Apple','Car','Cow','Cup','Dog','Horse','Pear','Tomato']
+final_layer_size = 1500
 
 #Import Data
 data = Import_Data(path,sample_size,subject_list)
@@ -36,13 +37,13 @@ def model(x):
     
     weights = {"W_conv1": tf.Variable(tf.random_normal([5,5,3,32])), #CHANGES HERE
                 "W_conv2": tf.Variable(tf.random_normal([5,5,32,64])),
-                "W_full": tf.Variable(tf.random_normal([14*14*64,100])),
-                "W_out": tf.Variable(tf.random_normal([100, n_class]))
+                "W_full": tf.Variable(tf.random_normal([14*14*64,final_layer_size])),
+                "W_out": tf.Variable(tf.random_normal([final_layer_size, n_class]))
     }
 
     bias = {"bias_conv1": tf.Variable(tf.random_normal([32])),
             "bias_conv2": tf.Variable(tf.random_normal([64])),
-            "bias_full": tf.Variable(tf.random_normal([100])),
+            "bias_full": tf.Variable(tf.random_normal([final_layer_size])),
             "bias_out": tf.Variable(tf.random_normal([n_class])),
     }
 
@@ -80,7 +81,7 @@ def train_CNN(x):
 
     prediction = model(x)
     cost = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=y))
-    optimizer = tf.train.AdamOptimizer().minimize(cost)
+    optimizer = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(cost)
 
     #Tensorflow saver object declared
     saver = tf.train.Saver()
@@ -94,7 +95,7 @@ def train_CNN(x):
                 _,c = sess.run([optimizer, cost], feed_dict = {x: epoch_x, y: epoch_y})
                 loss += c
             saver.save(sess, './Checkpoints/model.ckpt') #Save the current network in checkpoint
-            data.Shuffule()
+            #data.Shuffule()
             print("Loss for epoch ", epoch, " is: ",loss)
 
             #Print out the validation result every 5 epoch

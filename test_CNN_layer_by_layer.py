@@ -2,6 +2,9 @@ import tensorflow as tf
 import numpy as np
 import pandas as pd
 from Import_Images import Import_Data
+from sklearn.decomposition import PCA
+from scipy.stats import variation as sv
+from matplotlib import pyplot as plt
 
 """
 This is the main program to train the CNN
@@ -60,12 +63,37 @@ def model(x):
 
     output = tf.add(tf.matmul(full, weights['W_out']),bias['bias_out'])
 
-    return output
+    # return output
+    return output, conv1, conv1_pool, conv2, conv2_pool, full
+
+def plot_hist_of_layer(layer):
+        layer_being_process = layer
+        layer_being_process = np.reshape(layer_being_process, (len(layer_being_process),-1)) 
+        out = np.divide(np.square(np.std(layer_being_process,0)),np.mean(np.square(layer_being_process),0))
+        out = np.sort(out)
+        print(out[int(len(out)/2)])
+        """
+        plt.hist(out[~np.isnan(out)],bins=10)
+        plt.title("Gaussian Histogram")
+        plt.xlabel("Value")
+        plt.ylabel("Frequency")
+        plt.show()
+        """
+
+def pca_calculation(layer):
+        # Setup sklearn library for PCA analysis
+        pca = PCA(n_components=5)
+        # Calculate Explained Variance
+        layer_being_process = layer
+        layer_being_process = np.reshape(layer_being_process, (len(layer_being_process),-1)) 
+        pca.fit(layer_being_process)
+        print(pca.explained_variance_ratio_)
 
 #Run CNN
 def test_CNN(x):
 
-    prediction = model(x)
+    # prediction = model(x)
+    prediction, conv1, conv1_pool, conv2, conv2_pool, fc= model(x) # To output layer by layer info
     cost = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=y))
     optimizer = tf.train.AdamOptimizer().minimize(cost)
 
@@ -79,17 +107,38 @@ def test_CNN(x):
         temporary_accuracy = 0
         batch_count = int(data.num_images/batch_size)
 
+        # Container for layer outputs
+        conv1_out = []
+        conv1_pool_out = []
+        conv2_out = []
+        conv2_pool_out = []
+        fully_connected = []
+
         # Run Batches
         for _ in range(batch_count):
             epoch_x,epoch_y = data.next_img_batch(batch_size)
             correct = tf.equal(tf.arg_max(prediction,1), y)
             accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
-            temporary_accuracy = temporary_accuracy + accuracy.eval(feed_dict = {x: epoch_x, y:epoch_y})
+
+            # Output Layer Info
+            acc,  pd, c1, cp1, c2, cp2, f_connect = sess.run([accuracy, prediction, conv1,conv1_pool,conv2,conv2_pool,fc], feed_dict = {x: epoch_x, y: epoch_y})
+            conv1_out.extend(c1)
+            conv1_pool_out.extend(cp1)
+            conv2_out.extend(c2)
+            conv2_pool_out.extend(cp2)
+            fully_connected.extend(f_connect)
+            temporary_accuracy = temporary_accuracy + acc
 
         # Add up accuracy
         test_accuracy = (temporary_accuracy/batch_count)
-
         print("Test Accuracy is ", test_accuracy)
+        plot_hist_of_layer(conv1_out)
+        plot_hist_of_layer(conv1_pool_out)
+        plot_hist_of_layer(conv2_out)
+        plot_hist_of_layer(conv2_pool_out)
+        plot_hist_of_layer(fully_connected)
+        plot_hist_of_layer(pd)
+        # pca_calculation(data.images)
 
 # call main
 if __name__ == '__main__':
